@@ -1,0 +1,110 @@
+// Usuários permitidos e senhas
+const usuarios = { 
+    "BH": "123", 
+    "HDF": "321" 
+};
+
+let usuarioLogado = null;
+
+// Login
+function login() {
+    const usuario = prompt("Digite seu usuário:");
+    const senha = prompt("Digite sua senha:");
+    
+    if (usuarios[usuario] && usuarios[usuario] === senha) {
+        usuarioLogado = usuario;
+        document.getElementById("agenda").style.display = "block";
+        carregarDadosUsuario();
+        alert("Login bem-sucedido!");
+    } else {
+        alert("Usuário ou senha incorretos!");
+        return;
+    }
+}
+
+// Salvar dados no localStorage por usuário
+function salvarDadosUsuario() {
+    if (!usuarioLogado) return;
+    
+    const dadosGerais = JSON.parse(localStorage.getItem("agenda_dados")) || {};
+    const dadosUsuario = [];
+    
+    document.querySelectorAll("#tabela tbody tr").forEach(linha => {
+        const obj = {};
+        linha.querySelectorAll("input, select").forEach(input => {
+            obj[input.name] = input.type === "file" ? input.files[0]?.name || "" : input.value;
+        });
+        dadosUsuario.push(obj);
+    });
+    
+    dadosGerais[usuarioLogado] = dadosUsuario;
+    localStorage.setItem("agenda_dados", JSON.stringify(dadosGerais));
+}
+
+// Carregar dados do localStorage por usuário
+function carregarDadosUsuario() {
+    if (!usuarioLogado) return;
+    
+    const dadosGerais = JSON.parse(localStorage.getItem("agenda_dados")) || {};
+    const dados = dadosGerais[usuarioLogado] || [];
+    
+    document.querySelector("#tabela tbody").innerHTML = ""; // Limpa a tabela antes de carregar
+    dados.forEach(dado => adicionarNovaLinha(dado));
+}
+
+// Adicionar nova linha
+function adicionarNovaLinha(dado = {}) {
+    const tabela = document.getElementById("tabela").getElementsByTagName("tbody")[0];
+    const novaLinha = tabela.insertRow();
+    const colunas = [
+        "empresa", "pregao", "uasg", "orgao", "estado", "portal", "descricao", 
+        "horario", "valor", "responsavel", "contato", "status", "edital"
+    ];
+    
+    colunas.forEach(coluna => {
+        const celula = novaLinha.insertCell();
+        const input = document.createElement("input");
+        
+        if (coluna === "horario") {
+            input.type = "datetime-local";
+        } else if (coluna === "edital") {
+            input.type = "file";
+        } else if (coluna === "valor") {
+            input.type = "number";
+            input.step = "0.01";
+        } else if (coluna === "status") {
+            const select = document.createElement("select");
+            ["Pendente", "Concluído", "Cancelado"].forEach(opcao => {
+                const option = document.createElement("option");
+                option.value = opcao;
+                option.textContent = opcao;
+                select.appendChild(option);
+            });
+            select.name = coluna;
+            select.value = dado[coluna] || "Pendente";
+            celula.appendChild(select);
+            return;
+        } else {
+            input.type = "text";
+        }
+        
+        input.name = coluna;
+        input.value = dado[coluna] || "";
+        celula.appendChild(input);
+    });
+
+    const celulaAcao = novaLinha.insertCell();
+    const botaoSalvar = document.createElement("button");
+    botaoSalvar.innerText = "Salvar";
+    botaoSalvar.onclick = () => salvarDadosUsuario();
+    celulaAcao.appendChild(botaoSalvar);
+}
+
+// Fechar e salvar a planilha
+function fecharPlanilha() {
+    salvarDadosUsuario();
+    alert(`Dados salvos com sucesso para o usuário: ${usuarioLogado}`);
+}
+
+// Chamar a função de login ao carregar a página
+window.onload = login;
